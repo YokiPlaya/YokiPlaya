@@ -1,0 +1,381 @@
+function runScript(modelName, npcPowerValue, playerPowerThreshold, awardValue)
+	local UserInputService = game:GetService("UserInputService")
+	local Camera = workspace.CurrentCamera
+	local CameraPart1 = workspace[modelName].CameraPart1
+	local JoinPart1 = workspace[modelName].JoinPart1
+	local pplayer = game.Players.LocalPlayer
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	local UpdateAwardEvent = ReplicatedStorage:WaitForChild("UpdateAwardEvent")
+	local totalLength = 10
+	local playerLength = 5
+	local npcLength = 5
+	local leaderstats = pplayer:FindFirstChild("leaderstats")
+	local playerPower = leaderstats and leaderstats:FindFirstChild("Power") and leaderstats.Power.Value or 0
+	local lighting = game:GetService("Lighting")
+	print(npcPowerValue.Value)
+	local npcPower = lighting:WaitForChild("PowerNpc"):WaitForChild(npcPowerValue).Value
+	local inputBeganConnection = nil
+	local MarketplaceService = game:GetService("MarketplaceService")
+	local gamePassId = 207696990 -- change this to your actual game pass ID
+	local hasGamePass = false
+	local Players = game:GetService("Players")
+	local player = Players.LocalPlayer
+
+	-- Check if the player owns the game pass
+	local success, message = pcall(function()
+		hasGamePass = MarketplaceService:UserOwnsGamePassAsync(player.UserId, gamePassId)
+	end)
+
+	-- Handle errors
+	if not success then
+		warn("Error while checking if player owns game pass: " .. tostring(message))
+	end
+
+	JoinPart1.Join.Triggered:Connect(function(player)
+		local stats = player:findFirstChild("leaderstats")
+		local playerPower = stats:findFirstChild("Power").Value
+		local BguiCopy = player:WaitForChild("PlayerGui"):WaitForChild("BguiCopy")
+		local BattleFrame =
+			BguiCopy:WaitForChild("BattleFrame")
+		local GreenBar =
+			BattleFrame:WaitForChild("PlayerBar")
+		local RedBar =
+			BattleFrame:WaitForChild("NpcBar")
+		local NpcPower =
+			BattleFrame:WaitForChild("NpcPower")
+		local prompt = JoinPart1.Join
+
+		-- Update NpcPower text to show the power of the enemies
+		function formatNumber(n)
+			local units = {"K", "M", "B", "T", "Q", "Quint", "Sext", "Sept", "Oct", "Non", "Dec"}
+			for i, unit in ipairs(units) do
+				if n >= 1000 then
+					n = n / 1000
+				else
+					if i == 1 then
+						return "💪:" .. tostring(n)
+					else
+						return string.format("💪: %.1f%s", n, units[i-1])
+					end
+				end
+			end
+			return string.format("💪: %.3g%s", n, units[#units])
+		end
+
+		NpcPower.Text = formatNumber(npcPower)
+
+
+
+
+		if player == game.Players.LocalPlayer then
+			prompt.Enabled = false
+
+			playerLength =
+				5
+			npcLength =
+				5
+
+			GreenBar.Size =
+				UDim2.new(0.514,
+					0,
+					1,
+					0)
+			GreenBar.Position =
+				UDim2.new(-0.029,
+					0,
+					0,
+					0)
+
+			RedBar.Size =
+				UDim2.new(0.514,
+					0,
+					1,
+					0)
+			RedBar.Position =
+				UDim2.new(0.486,
+					0,
+					0,
+					0)
+
+			local numClicks = 0
+			local lastClickTime = 0
+
+			if inputBeganConnection then
+				inputBeganConnection:Disconnect()
+			end
+
+			inputBeganConnection = UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
+				if _G.countdownFinished then
+					if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+						local currentTime = os.clock()
+						if currentTime - lastClickTime < 1 then
+							if numClicks < 15 then
+								numClicks = numClicks + 1
+
+								print("clicked")
+
+								local lengthChange = math.min(1, playerPower / npcPower)
+								playerLength = playerLength + lengthChange
+								npcLength = npcLength - lengthChange
+
+								print("GreenBar.Size before update:", GreenBar.Size)
+								GreenBar.Size = UDim2.new(playerLength / totalLength, 0.5, GreenBar.Size.Y.Scale, 0.5)
+								print("GreenBar.Size after update:", GreenBar.Size)
+
+								RedBar.Size = UDim2.new(npcLength / totalLength, 0.5, RedBar.Size.Y.Scale, 0.5)
+								RedBar.Position = UDim2.new(GreenBar.Size.X.Scale, 0.5, RedBar.Position.Y.Scale, 0.5)
+
+								if GreenBar.Size.X.Scale <=
+									0.01 and
+									GreenBar.Position.X.Scale <
+									RedBar.Position.X.Scale then
+
+									Camera.CameraType =
+										Enum.CameraType.Custom
+									BguiCopy:Destroy()
+									if playerPower > playerPowerThreshold then
+										UpdateAwardEvent:FireServer(awardValue)
+									end
+
+									gameEnded =
+										true
+
+
+								elseif RedBar.Size.X.Scale <=
+									0.01 then
+
+									Camera.CameraType =
+										Enum.CameraType.Custom
+									BguiCopy:Destroy()
+									gameEnded =
+										true
+								end
+
+								if GreenBar.Size.X.Scale > RedBar.Size.X.Scale then
+									Camera.FieldOfView = math.max(Camera.FieldOfView - 1, 20)
+								elseif GreenBar.Size.X.Scale < RedBar.Size.X.Scale then
+									Camera.FieldOfView = math.min(Camera.FieldOfView + 1, 120)
+								end
+							end
+						else
+							numClicks = 1
+							lastClickTime = currentTime
+
+							print("clicked")
+
+							local lengthChange = math.min(1, playerPower / npcPower)
+							playerLength = playerLength + lengthChange
+							npcLength = npcLength - lengthChange
+
+							print("GreenBar.Size before update:", GreenBar.Size)
+							GreenBar.Size = UDim2.new(playerLength / totalLength, 0.5, GreenBar.Size.Y.Scale, 0.5)
+							print("GreenBar.Size after update:", GreenBar.Size)
+
+							RedBar.Size = UDim2.new(npcLength / totalLength, 0.5, RedBar.Size.Y.Scale, 0.5)
+							RedBar.Position = UDim2.new(GreenBar.Size.X.Scale, 0.5, RedBar.Position.Y.Scale, 0.5)
+
+							if GreenBar.Size.X.Scale <=
+								0.01 and
+								GreenBar.Position.X.Scale <
+								RedBar.Position.X.Scale then
+
+								Camera.CameraType =
+									Enum.CameraType.Custom
+								BguiCopy:Destroy()
+								if playerPower > playerPowerThreshold then
+									UpdateAwardEvent:FireServer(awardValue)
+								end
+								gameEnded =
+									true
+
+
+							elseif RedBar.Size.X.Scale <=
+								0.01 then
+
+								Camera.CameraType =
+									Enum.CameraType.Custom
+								BguiCopy:Destroy()
+
+
+								gameEnded =
+									true
+							end
+
+							if GreenBar.Size.X.Scale > RedBar.Size.X.Scale then
+								Camera.FieldOfView = math.max(Camera.FieldOfView - 1, 20)
+							elseif GreenBar.Size.X.Scale < RedBar.Size.X.Scale then
+								Camera.FieldOfView = math.min(Camera.FieldOfView + 1, 120)
+							end
+						end
+					end
+				end
+			end)
+
+			local character = player.Character or player.CharacterAdded:Wait()
+			local humanoid = character:FindFirstChildOfClass("Humanoid")
+			local animator = humanoid:FindFirstChildOfClass("Animator")
+			local animation = Instance.new("Animation")
+			animation.AnimationId = "rbxassetid://13982698260"
+			local animationTrack = animator:LoadAnimation(animation)
+			animationTrack.Looped = true
+			animationTrack:Play()
+
+			humanoid.WalkSpeed = 0
+			humanoid.JumpHeight = 0
+			player.PlayerGui:WaitForChild("AutoTrain").Enabled = false
+			player.PlayerGui:WaitForChild("CodeGui").Enabled = false
+			player.PlayerGui:WaitForChild("Sidebars").Enabled = false
+			player.PlayerGui:WaitForChild("RebirthGui").Enabled = false
+			player.PlayerGui:WaitForChild("UpgradeGui").Enabled = false
+			player.PlayerGui:WaitForChild("Main").Enabled = false
+
+			local prompt = JoinPart1.Join
+
+			if _G.countdownFinished then
+				local gameEnded = false
+
+				while wait(0.2) do
+					if gameEnded then break end
+
+					local lengthChange =
+						math.min(0.5,
+							npcPower /
+							playerPower)
+					playerLength =
+						playerLength -
+						lengthChange
+					npcLength =
+						npcLength +
+						lengthChange
+
+					GreenBar.Size =
+						UDim2.new(playerLength /
+							totalLength,
+							1,
+							GreenBar.Size.Y.Scale,
+							1)
+					RedBar.Size =
+						UDim2.new(npcLength /
+							totalLength,
+							1,
+							RedBar.Size.Y.Scale,
+							1)
+					RedBar.Position =
+						UDim2.new(GreenBar.Size.X.Scale,
+							1,
+							RedBar.Position.Y.Scale,
+							1)
+
+					if playerLength <= 0.5 then
+						local loseAnimation = Instance.new("Animation")
+						loseAnimation.AnimationId = "rbxassetid://14036172227" -- replace with actual animation ID
+						local loseAnimationTrack = animator:LoadAnimation(loseAnimation)
+						loseAnimationTrack:Play()
+						print("red win")
+						Camera.CameraType = Enum.CameraType.Custom
+
+
+						BguiCopy:Destroy()
+						gameEnded = true
+
+					elseif npcLength <= 1 then
+						print("green win")
+						Camera.CameraType =
+							Enum.CameraType.Custom
+						BguiCopy:Destroy() 
+
+
+						gameEnded = true
+
+						BguiCopy:Destroy()
+						if playerPower > playerPowerThreshold then
+							UpdateAwardEvent:FireServer(awardValue)
+							print(awardValue)
+						end
+						gameEnded = true
+						wait(1)
+					end
+
+
+					if GreenBar.Size.X.Scale > RedBar.Size.X.Scale then
+						Camera.FieldOfView = math.max(Camera.FieldOfView - 1, 20)
+					elseif GreenBar.Size.X.Scale < RedBar.Size.X.Scale then
+
+					end
+					if GreenBar.Size.X.Scale > RedBar.Size.X.Scale then
+						Camera.FieldOfView = math.max(Camera.FieldOfView - 1, 20)
+					elseif GreenBar.Size.X.Scale < RedBar.Size.X.Scale then
+						Camera.FieldOfView = math.min(Camera.FieldOfView + 1, 120)
+					end
+				end
+
+				Camera.FieldOfView = 70
+
+				if inputBeganConnection then
+					inputBeganConnection:Disconnect()
+				end
+
+				animationTrack:Stop()
+
+				humanoid.WalkSpeed = 16
+				player.PlayerGui:WaitForChild("AutoTrain").Enabled = true
+				player.PlayerGui:WaitForChild("CodeGui").Enabled = true
+				player.PlayerGui:WaitForChild("Sidebars").Enabled = true
+				player.PlayerGui:WaitForChild("RebirthGui").Enabled = true
+				player.PlayerGui:WaitForChild("UpgradeGui").Enabled = true
+				player.PlayerGui:WaitForChild("Main").Enabled = true
+				humanoid.JumpHeight = 7.2
+
+				-- Increase player's speed if they have the game pass
+				if hasGamePass then
+					humanoid.WalkSpeed = 32
+				end
+
+				if player == game.Players.LocalPlayer then
+					prompt.Enabled = true
+
+					wait(3)
+				end
+		
+		
+			end
+		end
+		
+	end)
+end
+
+runScript("First1Map1", "KidMap1", 30, 50)
+runScript("First2Map1", "KidMap1", 30, 50)
+runScript("Second1Map1", "StrongManMap1", 300, 500)
+runScript("Second2Map1", "StrongManMap1", 300, 500)
+runScript("Third1Map1", "OctopMap1", 500, 1500)
+runScript("Third2Map1", "OctopMap1", 500, 1500)
+runScript("Four1Map1", "SharkMap1", 5000, 30000)
+runScript("Four2Map1", "SharkMap1", 500, 30000)
+runScript("Boss1Map1", "BossMap1", 5000, 100000)
+runScript("Boss2Map1", "BossMap1", 100000, 100000)
+runScript("Boss3Map1", "BossMap1", 100000, 100000)
+--2
+runScript("First1Map2", "ToyCarMap2", 500000, 500000)
+runScript("First2Map2", "ToyCarMap2", 500000, 500000)
+runScript("Second1Map2", "RobotMap2", 5000000, 1250000)
+runScript("Second2Map2", "RobotMap2", 5000000, 1250000)
+runScript("Third1Map2", "BoatMap2", 25000000, 10250000)
+runScript("Third2Map2", "BoatMap2", 25000000, 10250000)
+runScript("Boss1Map2", "BossMap2", 300000000, 150250000)
+runScript("Boss2Map2", "BossMap2", 300000000, 150250000)
+runScript("Boss3Map2", "BossMap2", 300000000, 150250000)
+--3
+runScript("First1Map3", "TurtleMap3", 5000000000, 1050000005)
+runScript("First2Map3", "TurtleMap3", 5000000000, 1050000005)
+runScript("Second1Map3", "SeaGrassMap3", 50000000000, 75050000005)
+runScript("Second2Map3", "SeaGrassMap3", 50000000000, 75050000005)
+runScript("Third1Map3CD", "SeaBeastMap3", 10000000000000 , 300000000000)
+runScript("Third2Map3CD", "SeaBeastMap3", 10000000000000 , 300000000000)
+runScript("Four1Map3", "MythicalMap3",  500000000000000, 5000000000000)
+runScript("Four2Map3", "MythicalMap3", 500000000000000 , 5000000000000)
+runScript("Boss1Map3", "BossMap3", 10000000000000000 , 9500000000000)
+runScript("Boss2Map3", "BossMap3", 10000000000000000 , 9500000000000)
+runScript("Boss3Map3", "BossMap3", 10000000000000000 , 9500000000000)
+--4
+
